@@ -32,32 +32,13 @@ Simply open `index.html` in any modern web browser.
 
 ## 🕹️ How to Use
 
-1. **Capture Screenshots**: During your games, take screenshots at stages **4-3, 4-5, or 5-1**.
+1. **Capture Screenshots**: During your games, take screenshots at stages **4-3, 4-5, or 5-1**. I use MetaTFT desktop app automated screenshot for this.
 2. **Upload**: Drag and drop your screenshot folder into the dashboard.
 3. **Review**:
    - Confirm your **final placement** (1st-8th) for each detected game.
    - If an augment icon is new, the tool will ask you to name it. This saves it to your local database!
 4. **Analyze**: View your personal stats in the sortable table.
 
-## 🏗️ Project Structure
-
-```
-TFT stats/
-├── index.html           # Main application interface
-├── css/styles.css       # Premium dark theme
-├── js/
-│   ├── app.js           # Main orchestrator
-│   ├── processor.js     # Handles game session logic
-│   ├── ocr.js           # Tesseract.js wrapper
-│   ├── recognizer.js    # Augment icon extraction
-│   └── database.js      # LocalStorage manager
-└── README.md
-```
-
 ## 📝 Updating for New Sets
 
 The tool is designed to be future-proof. When a new set releases, simply continue using the tool. As you "Name" unknown augments in the review screen, your personal database will grow with the new icons!
-
----
-
-_Created for TFT enthusiasts who want better insights into their own gameplay._
