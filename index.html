@@ -18,8 +18,7 @@
     <div class="app-container">
       <header>
         <div class="logo-area">
-          <h1>TFT <span>Augment Stats</span></h1>
-          <p class="subtitle">Personal OCR Tracker</p>
+          <h1>TFT <span>Personal Augment Stats</span></h1>
         </div>
         <nav>
           <button id="btn-dashboard" class="nav-btn active">Dashboard</button>
@@ -157,6 +156,11 @@
                 <p class="empty-message">No augments learned yet. Process some screenshots first.</p>
             </div>
             <div class="db-actions">
+                <div class="import-export-group">
+                    <button id="btn-export-augments" class="secondary-btn">📥 Export Augment DB</button>
+                    <button id="btn-import-augments" class="secondary-btn">📤 Import Augment DB</button>
+                    <input type="file" id="import-augments-input" accept=".json" hidden>
+                </div>
                 <button id="btn-clear-augments" class="danger-btn">Clear All Augments</button>
             </div>
         </section>

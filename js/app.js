@@ -60,6 +60,52 @@ class App {
                 this.showSection('database');
             }
         });
+
+        // Augment DB import/export
+        document.getElementById('btn-export-augments')?.addEventListener('click', () => this.exportAugmentDB());
+        document.getElementById('btn-import-augments')?.addEventListener('click', () => {
+            document.getElementById('import-augments-input').click();
+        });
+        document.getElementById('import-augments-input')?.addEventListener('change', e => {
+            this.importAugmentDB(e.target.files[0]);
+        });
+    }
+
+    exportAugmentDB() {
+        const icons = localStorage.getItem('tft_augment_icons') || '{}';
+        const blob = new Blob([icons], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tft_augment_db_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    importAugmentDB(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const data = JSON.parse(e.target.result);
+                const count = Object.keys(data).length;
+                if (confirm(`Import ${count} augments? This will merge with your existing database.`)) {
+                    const existing = JSON.parse(localStorage.getItem('tft_augment_icons') || '{}');
+                    const merged = { ...existing, ...data };
+                    localStorage.setItem('tft_augment_icons', JSON.stringify(merged));
+                    alert(`Successfully imported ${count} augments!`);
+                    this.showSection('database');
+                }
+            } catch (err) {
+                alert('Invalid file format. Please select a valid augment database JSON file.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    removeSession(index) {
+        this.pendingSessions.splice(index, 1);
+        this.renderSessionReview();
     }
 
     showSection(section) {
@@ -149,10 +195,13 @@ class App {
 
         sessionList.innerHTML = this.pendingSessions.map((session, idx) => `
             <div class="session-card" data-index="${idx}">
-                <div class="session-info">
-                    <h4>Game ${idx + 1} (${session.type.toUpperCase()})</h4>
-                    <p>${new Date(session.startTime).toLocaleString()}</p>
-                    <p>${session.screenshots.length} Screenshots</p>
+                <div class="session-card-header">
+                    <div class="session-info">
+                        <h4>Game ${idx + 1} (${session.type.toUpperCase()})</h4>
+                        <p>${new Date(session.startTime).toLocaleString()}</p>
+                        <p>${session.screenshots.length} Screenshots</p>
+                    </div>
+                    <button class="remove-game-btn" onclick="window.app.removeSession(${idx})">✕ Remove</button>
                 </div>
                 <div class="augments-list">
                     <h5>Augments:</h5>

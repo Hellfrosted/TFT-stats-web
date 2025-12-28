@@ -451,6 +451,37 @@ footer {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.import-export-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.remove-game-btn {
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.remove-game-btn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.session-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
 /* Utilities */
