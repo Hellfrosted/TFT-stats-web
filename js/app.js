@@ -193,6 +193,13 @@ class App {
         reviewSection.classList.remove('hidden');
         document.getElementById('stats-dashboard').classList.add('hidden');
 
+        // Generate thumbnail URLs for first screenshot of each session
+        this.pendingSessions.forEach(session => {
+            if (session.screenshots.length > 0 && !session.thumbnailUrl) {
+                session.thumbnailUrl = URL.createObjectURL(session.screenshots[0]);
+            }
+        });
+
         sessionList.innerHTML = this.pendingSessions.map((session, idx) => `
             <div class="session-card" data-index="${idx}">
                 <div class="session-card-header">
@@ -203,6 +210,11 @@ class App {
                     </div>
                     <button class="remove-game-btn" onclick="window.app.removeSession(${idx})">✕ Remove</button>
                 </div>
+                <div class="screenshot-preview">
+                    <img src="${session.thumbnailUrl}" alt="Game ${idx + 1} preview" 
+                         class="thumbnail" onclick="window.app.expandScreenshot(${idx})">
+                    <span class="expand-hint">Click to expand</span>
+                </div>
                 <div class="augments-list">
                     <h5>Augments:</h5>
                     <div class="augment-icons">
@@ -211,6 +223,7 @@ class App {
                                 <span class="aug-name">${aug}</span>
                                 ${aug === 'Unknown Augment' ? `
                                     <input type="text" placeholder="Enter Name" 
+                                           data-aug-index="${i}"
                                            onchange="window.app.nameAugment(${idx}, ${i}, this.value)">
                                 ` : ''}
                             </div>
@@ -228,12 +241,67 @@ class App {
         document.getElementById('btn-save-sessions').onclick = () => this.saveSessions();
     }
 
+    expandScreenshot(sessionIdx) {
+        const session = this.pendingSessions[sessionIdx];
+        if (!session.screenshots.length) return;
+        
+        // Create modal for full-size screenshot gallery
+        const modal = document.createElement('div');
+        modal.className = 'screenshot-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <button class="modal-close" onclick="this.parentElement.parentElement.remove()">✕ Close</button>
+                <div class="modal-nav">
+                    <button class="modal-prev" onclick="window.app.modalNav(-1)">◀ Prev</button>
+                    <span id="modal-counter">1 / ${session.screenshots.length}</span>
+                    <button class="modal-next" onclick="window.app.modalNav(1)">Next ▶</button>
+                </div>
+                <img id="modal-image" src="${session.thumbnailUrl}" alt="Screenshot">
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Store state for navigation
+        this.modalSession = session;
+        this.modalIndex = 0;
+        this.modalUrls = session.screenshots.map(f => URL.createObjectURL(f));
+        document.getElementById('modal-image').src = this.modalUrls[0];
+    }
+
+    modalNav(direction) {
+        this.modalIndex = Math.max(0, Math.min(this.modalUrls.length - 1, this.modalIndex + direction));
+        document.getElementById('modal-image').src = this.modalUrls[this.modalIndex];
+        document.getElementById('modal-counter').textContent = 
+            `${this.modalIndex + 1} / ${this.modalUrls.length}`;
+    }
+
     updateSessionPlacement(index, value) {
         this.pendingSessions[index].placement = parseInt(value) || 4;
     }
 
     nameAugment(sessionIndex, augIndex, name) {
-        this.pendingSessions[sessionIndex].augments[augIndex] = name;
+        // Get the icon data for this augment slot to match across sessions
+        const targetSession = this.pendingSessions[sessionIndex];
+        const targetIconData = targetSession.iconData?.[augIndex];
+        
+        // Apply name to this session
+        targetSession.augments[augIndex] = name;
+        
+        // Apply name to all other sessions with matching unknown augments
+        // Since we don't have reliable icon matching yet, match by position and "Unknown Augment" status
+        this.pendingSessions.forEach((session, sIdx) => {
+            if (sIdx !== sessionIndex) {
+                session.augments.forEach((aug, aIdx) => {
+                    // If it's at the same position and still unknown, apply the same name
+                    if (aug === 'Unknown Augment' && aIdx === augIndex) {
+                        session.augments[aIdx] = name;
+                    }
+                });
+            }
+        });
+        
+        // Re-render to update all cards
+        this.renderSessionReview();
     }
 
     saveSessions() {
