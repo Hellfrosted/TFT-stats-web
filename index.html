@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFT Augment Stats - Personal OCR Tool</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+</head>
+
+<body class="dark-theme">
+    <div class="app-container">
+        <header>
+            <div class="logo-area">
+                <h1>TFT <span>Augment Stats</span></h1>
+                <p class="subtitle">Personal OCR Tracker</p>
+            </div>
+            <nav>
+                <button id="btn-dashboard" class="nav-btn active">Dashboard</button>
+                <button id="btn-history" class="nav-btn">Game History</button>
+                <button id="btn-database" class="nav-btn">Augment DB</button>
+                <button id="btn-settings" class="nav-btn">Settings</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section id="upload-section" class="card glass">
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 16V8M12 8L9 11M12 8L15 11M3 15V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V15M5 5H19"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <h3>Drop Screenshot Folder Here</h3>
+                        <p>Or click to select files</p>
+                    </div>
+                    <input type="file" id="file-input" multiple webkitdirectory directory hidden>
+                </div>
+                <div id="file-list-preview" class="file-preview-list hidden"></div>
+                <div id="processing-status" class="status-bar hidden">
+                    <div class="progress-info">
+                        <span id="progress-text">Processing screenshots...</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Session Review -->
+            <section id="session-review" class="card glass hidden">
+                <div class="section-header">
+                    <h3>Confirm Game Sessions</h3>
+                    <p class="subtitle">Enter your placement for each game detected</p>
+                </div>
+                <div id="session-list" class="session-grid">
+                    <!-- Sessions will be injected here -->
+                </div>
+                <button id="btn-save-sessions" class="primary-btn">Save All & Update Stats</button>
+            </section>
+            <div class="card glass stats-summary">
+                <h3>Overall Stats</h3>
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="label">Total Games</span>
+                        <span id="stat-total-games" class="value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Avg. Placement</span>
+                        <span id="stat-avg-place" class="value">0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Win Rate</span>
+                        <span id="stat-win-rate" class="value">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass augment-table-container">
+                <div class="table-header">
+                    <h3>Augment Performance</h3>
+                    <div class="table-actions">
+                        <select id="db-selector" class="styled-select">
+                            <option value="live">Live (Live Stats)</option>
+                            <option value="pbe">PBE (Experimental)</option>
+                        </select>
+                        <button id="btn-export" class="secondary-btn">Export CSV</button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="augment-stats-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="name">Augment</th>
+                                <th data-sort="count">Games</th>
+                                <th data-sort="avg">Avg. Place</th>
+                                <th data-sort="winrate">Win Rate</th>
+                                <th data-sort="frequency">Pick Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-body">
+                            <!-- Data will be injected here -->
+                            <tr class="empty-row">
+                                <td colspan="5">Upload screenshots to see statistics</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 TFT Augment Stats Tool. All data processed locally.</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
