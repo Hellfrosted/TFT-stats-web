@@ -1,10 +1,13 @@
+/**
+ * TFT Augment Stats - Database Module
+ * Handles localStorage persistence for game stats and augment data
+ */
 export class Database {
     constructor() {
         this.data = JSON.parse(localStorage.getItem('tft_stats_data')) || {
-            live: [], // Array of game objects { date, placement, augments: [] }
+            live: [],
             pbe: []
         };
-        this.augments = JSON.parse(localStorage.getItem('tft_augments_db')) || [];
     }
 
     save() {
@@ -49,8 +52,19 @@ export class Database {
         return games.reduce((acc, g) => acc + g.placement, 0) / games.length;
     }
 
+    getOverallWinRate(type = 'live') {
+        const games = this.data[type];
+        if (games.length === 0) return 0;
+        return games.filter(g => g.placement === 1).length / games.length;
+    }
+
     exportCSV(type = 'live') {
         const stats = this.getStats(type);
+        if (stats.length === 0) {
+            alert('No data to export.');
+            return;
+        }
+
         const headers = ['Augment', 'Games', 'Avg Placement', 'Win Rate', 'Pick Rate'];
         const rows = stats.map(s => [
             s.name,
@@ -67,5 +81,6 @@ export class Database {
         a.href = url;
         a.download = `tft_augment_stats_${type}_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
+        URL.revokeObjectURL(url);
     }
 }

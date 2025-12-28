@@ -1,3 +1,7 @@
+/**
+ * TFT Augment Stats - Main Application
+ * Orchestrates the UI, file processing, and data management
+ */
 import { Processor } from './processor.js';
 import { Database } from './database.js';
 
@@ -5,7 +9,8 @@ class App {
     constructor() {
         this.processor = new Processor();
         this.database = new Database();
-
+        this.pendingSessions = [];
+        
         this.initEventListeners();
         this.updateDashboard();
     }
@@ -14,36 +19,106 @@ class App {
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
 
+        // File upload handlers
         dropZone.addEventListener('click', () => fileInput.click());
-
-        dropZone.addEventListener('dragover', (e) => {
+        dropZone.addEventListener('dragover', e => {
             e.preventDefault();
             dropZone.classList.add('drag-over');
         });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
-            const files = e.dataTransfer.files;
-            this.handleFileUpload(files);
+            this.handleFileUpload(e.dataTransfer.files);
         });
+        fileInput.addEventListener('change', e => this.handleFileUpload(e.target.files));
 
-        fileInput.addEventListener('change', (e) => {
-            this.handleFileUpload(e.target.files);
-        });
-
-        document.getElementById('db-selector').addEventListener('change', (e) => {
+        // Dashboard controls
+        document.getElementById('db-selector').addEventListener('change', e => {
             this.updateDashboard(e.target.value);
         });
-
         document.getElementById('btn-export').addEventListener('click', () => {
-            const dbType = document.getElementById('db-selector').value;
-            this.database.exportCSV(dbType);
+            this.database.exportCSV(document.getElementById('db-selector').value);
         });
+
+        // Navigation
+        document.getElementById('btn-dashboard').addEventListener('click', () => this.showSection('dashboard'));
+        document.getElementById('btn-history').addEventListener('click', () => this.showSection('history'));
+        document.getElementById('btn-database').addEventListener('click', () => this.showSection('database'));
+        document.getElementById('btn-settings').addEventListener('click', () => this.showSection('settings'));
+
+        // Settings actions
+        document.getElementById('btn-clear-all-data')?.addEventListener('click', () => {
+            if (confirm('Are you sure? This will delete ALL your stats data.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        });
+        document.getElementById('btn-clear-augments')?.addEventListener('click', () => {
+            if (confirm('Clear all learned augment icons?')) {
+                localStorage.removeItem('tft_augment_icons');
+                this.showSection('database');
+            }
+        });
+    }
+
+    showSection(section) {
+        const sections = ['stats-dashboard', 'game-history', 'augment-db', 'settings-section'];
+        const buttons = ['btn-dashboard', 'btn-history', 'btn-database', 'btn-settings'];
+        
+        sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+        buttons.forEach(id => document.getElementById(id).classList.remove('active'));
+
+        const sectionMap = {
+            dashboard: { section: 'stats-dashboard', btn: 'btn-dashboard' },
+            history: { section: 'game-history', btn: 'btn-history', render: () => this.renderHistory() },
+            database: { section: 'augment-db', btn: 'btn-database', render: () => this.renderAugmentDB() },
+            settings: { section: 'settings-section', btn: 'btn-settings' }
+        };
+
+        const config = sectionMap[section];
+        document.getElementById(config.section).classList.remove('hidden');
+        document.getElementById(config.btn).classList.add('active');
+        config.render?.();
+    }
+
+    renderHistory() {
+        const historyList = document.getElementById('history-list');
+        const games = [...this.database.data.live, ...this.database.data.pbe]
+            .sort((a, b) => b.date - a.date);
+
+        if (games.length === 0) {
+            historyList.innerHTML = '<p class="empty-message">No games recorded yet.</p>';
+            return;
+        }
+
+        historyList.innerHTML = games.map(game => `
+            <div class="history-card">
+                <div class="history-info">
+                    <span class="placement">#${game.placement}</span>
+                    <span class="date">${new Date(game.date).toLocaleDateString()}</span>
+                </div>
+                <div class="augments">${game.augments.join(', ') || 'No augments'}</div>
+            </div>
+        `).join('');
+    }
+
+    renderAugmentDB() {
+        const dbList = document.getElementById('augment-db-list');
+        const icons = JSON.parse(localStorage.getItem('tft_augment_icons')) || {};
+        const names = Object.keys(icons);
+
+        if (names.length === 0) {
+            dbList.innerHTML = '<p class="empty-message">No augments learned yet.</p>';
+            return;
+        }
+
+        dbList.innerHTML = names.map(name => `
+            <div class="augment-db-item">
+                <img src="${icons[name]}" alt="${name}" class="augment-icon">
+                <span>${name}</span>
+            </div>
+        `).join('');
     }
 
     async handleFileUpload(files) {
@@ -53,7 +128,7 @@ class App {
         processingBar.classList.remove('hidden');
 
         try {
-            this.pendingSessions = await this.processor.processFiles(files, (progress) => {
+            this.pendingSessions = await this.processor.processFiles(files, progress => {
                 this.updateProgressBar(progress);
             });
             this.renderSessionReview();
@@ -68,15 +143,14 @@ class App {
     renderSessionReview() {
         const reviewSection = document.getElementById('session-review');
         const sessionList = document.getElementById('session-list');
-        const statsDashboard = document.getElementById('stats-dashboard');
 
         reviewSection.classList.remove('hidden');
-        statsDashboard.classList.add('hidden');
+        document.getElementById('stats-dashboard').classList.add('hidden');
 
-        sessionList.innerHTML = this.pendingSessions.map((session, index) => `
-            <div class="session-card" data-index="${index}">
+        sessionList.innerHTML = this.pendingSessions.map((session, idx) => `
+            <div class="session-card" data-index="${idx}">
                 <div class="session-info">
-                    <h4>Game ${index + 1} (${session.type.toUpperCase()})</h4>
+                    <h4>Game ${idx + 1} (${session.type.toUpperCase()})</h4>
                     <p>${new Date(session.startTime).toLocaleString()}</p>
                     <p>${session.screenshots.length} Screenshots</p>
                 </div>
@@ -88,7 +162,7 @@ class App {
                                 <span class="aug-name">${aug}</span>
                                 ${aug === 'Unknown Augment' ? `
                                     <input type="text" placeholder="Enter Name" 
-                                           onchange="window.app.nameAugment(${index}, ${i}, this.value)">
+                                           onchange="window.app.nameAugment(${idx}, ${i}, this.value)">
                                 ` : ''}
                             </div>
                         `).join('')}
@@ -97,7 +171,7 @@ class App {
                 <div class="placement-input">
                     <label>Placement:</label>
                     <input type="number" min="1" max="8" value="${session.placement}" 
-                           onchange="window.app.updateSessionPlacement(${index}, this.value)">
+                           onchange="window.app.updateSessionPlacement(${idx}, this.value)">
                 </div>
             </div>
         `).join('');
@@ -106,17 +180,11 @@ class App {
     }
 
     updateSessionPlacement(index, value) {
-        this.pendingSessions[index].placement = parseInt(value);
+        this.pendingSessions[index].placement = parseInt(value) || 4;
     }
 
     nameAugment(sessionIndex, augIndex, name) {
-        const session = this.pendingSessions[sessionIndex];
-        session.augments[augIndex] = name;
-
-        // Save to reference database (icons are stored in the session/recognizer objects)
-        // Note: For now we'll just name it in the session
-        // A more advanced version would use the icon data from recognizer.js
-        console.log(`Named augment ${augIndex} in session ${sessionIndex}: ${name}`);
+        this.pendingSessions[sessionIndex].augments[augIndex] = name;
     }
 
     saveSessions() {
@@ -136,22 +204,25 @@ class App {
     }
 
     updateProgressBar(progress) {
-        const fill = document.getElementById('progress-fill');
-        const text = document.getElementById('progress-percent');
-        fill.style.width = `${progress}%`;
-        text.textContent = `${Math.round(progress)}%`;
+        document.getElementById('progress-fill').style.width = `${progress.percent}%`;
+        document.getElementById('progress-percent').textContent = `${Math.round(progress.percent)}%`;
+        document.getElementById('progress-text').textContent = 
+            `${progress.current}/${progress.total} files • ${progress.stage}`;
     }
 
     updateDashboard(dbType = 'live') {
         const stats = this.database.getStats(dbType);
-        this.renderStats(stats);
+        this.renderStats(stats, dbType);
     }
 
-    renderStats(stats) {
-        // Implementation for rendering stats into the table and summary items
+    renderStats(stats, dbType) {
         const statsBody = document.getElementById('stats-body');
+        
         if (!stats || stats.length === 0) {
-            statsBody.innerHTML = '<tr class="empty-row"><td colspan="5">No data available for the selected period</td></tr>';
+            statsBody.innerHTML = '<tr class="empty-row"><td colspan="5">No data available</td></tr>';
+            document.getElementById('stat-total-games').textContent = '0';
+            document.getElementById('stat-avg-place').textContent = '0.00';
+            document.getElementById('stat-win-rate').textContent = '0%';
             return;
         }
 
@@ -165,14 +236,13 @@ class App {
             </tr>
         `).join('');
 
-        // Update summary cards
-        document.getElementById('stat-total-games').textContent = this.database.getTotalGames();
-        document.getElementById('stat-avg-place').textContent = this.database.getOverallAvgPlace().toFixed(2);
-        document.getElementById('stat-win-rate').textContent = `${(this.database.getOverallWinRate() * 100).toFixed(1)}%`;
+        document.getElementById('stat-total-games').textContent = this.database.getTotalGames(dbType);
+        document.getElementById('stat-avg-place').textContent = this.database.getOverallAvgPlace(dbType).toFixed(2);
+        document.getElementById('stat-win-rate').textContent = `${(this.database.getOverallWinRate(dbType) * 100).toFixed(1)}%`;
     }
 }
 
-// Initialize the app
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new App();
 });

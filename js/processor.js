@@ -1,3 +1,7 @@
+/**
+ * TFT Augment Stats - Processor Module
+ * Handles batch file processing, game identification, and grouping logic
+ */
 import { OCR } from './ocr.js';
 import { Recognizer } from './recognizer.js';
 
@@ -13,32 +17,41 @@ export class Processor {
 
         const games = this.identifyGames(fileList);
         const processedGames = [];
+        const totalFiles = fileList.length;
+        let filesProcessed = 0;
 
         for (let i = 0; i < games.length; i++) {
-            const gameType = games[i][0].name.toLowerCase().includes('pbe') ? 'pbe' : 'live';
+            const gameFiles = games[i];
+            const gameType = gameFiles[0].name.toLowerCase().includes('pbe') ? 'pbe' : 'live';
+            
             const session = {
                 id: `game_${Date.now()}_${i}`,
                 type: gameType,
-                startTime: games[i][0].lastModified,
-                screenshots: games[i],
-                placement: 4, // Default placement
+                startTime: gameFiles[0].lastModified,
+                screenshots: gameFiles,
+                placement: 4,
                 augments: [],
-                group: this.getGroup(games[i][0].lastModified, gameType)
+                group: this.getGroup(gameFiles[0].lastModified, gameType)
             };
 
-            // Extract augments from screenshots in the session
             for (const screenshot of session.screenshots) {
+                filesProcessed++;
+                onProgress({
+                    current: filesProcessed,
+                    total: totalFiles,
+                    percent: (filesProcessed / totalFiles) * 100,
+                    stage: `Processing game ${i + 1}/${games.length}`,
+                    file: screenshot.name
+                });
+
                 const stage = await this.ocr.recognizeStage(screenshot);
-                if (stage === '4-3' || stage === '4-5' || stage === '5-1') {
+                if (['4-3', '4-5', '5-1'].includes(stage)) {
                     const icons = await this.recognizer.extractAugmentIcons(screenshot);
-                    // Update session augments if we found new ones
                     session.augments = icons.map(ic => ic.name || 'Unknown Augment');
                 }
             }
 
             processedGames.push(session);
-
-            onProgress(((i + 1) / games.length) * 100);
         }
 
         return processedGames;
@@ -46,46 +59,52 @@ export class Processor {
 
     getGroup(timestamp, type) {
         const date = new Date(timestamp);
+        
         if (type === 'pbe') {
-            // Group by day, split at noon
-            const isAfterNoon = date.getHours() >= 12;
+            // PBE: Group by day, split at noon
             const groupDate = new Date(date);
-            if (!isAfterNoon) groupDate.setDate(date.getDate() - 1);
+            if (date.getHours() < 12) {
+                groupDate.setDate(date.getDate() - 1);
+            }
             groupDate.setHours(12, 0, 0, 0);
             return `PBE_${groupDate.toISOString().split('T')[0]}`;
-        } else {
-            // Group by 2-week Tuesday start
-            // Set a reference Tuesday (e.g., Dec 24, 2024 is a Tuesday)
-            const refTuesday = new Date('2024-12-24T00:00:00Z');
-            const diffMs = date - refTuesday;
-            const diffWeeks = Math.floor(diffMs / (14 * 24 * 60 * 60 * 1000));
-            const groupStart = new Date(refTuesday.getTime() + diffWeeks * 14 * 24 * 60 * 60 * 1000);
-            return `Live_${groupStart.toISOString().split('T')[0]}`;
         }
+        
+        // Live: Group by 2-week periods starting on Tuesday
+        const refTuesday = new Date('2024-12-24T00:00:00Z');
+        const diffMs = date - refTuesday;
+        const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
+        const periods = Math.floor(diffMs / twoWeeksMs);
+        const groupStart = new Date(refTuesday.getTime() + periods * twoWeeksMs);
+        return `Live_${groupStart.toISOString().split('T')[0]}`;
     }
 
     identifyGames(fileList) {
         const games = [];
         let currentGame = [];
-        const GAP_THRESHOLD = 3 * 60 * 1000; // 3 minutes
+        const GAP_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
 
-        fileList.forEach((file, index) => {
+        for (const file of fileList) {
             if (currentGame.length === 0) {
                 currentGame.push(file);
-            } else {
-                const prevFile = currentGame[currentGame.length - 1];
-                const timeDiff = file.lastModified - prevFile.lastModified;
-
-                if (timeDiff > GAP_THRESHOLD) {
-                    games.push(currentGame);
-                    currentGame = [file];
-                } else {
-                    currentGame.push(file);
-                }
+                continue;
             }
-        });
 
-        if (currentGame.length > 0) games.push(currentGame);
+            const prevFile = currentGame[currentGame.length - 1];
+            const timeDiff = file.lastModified - prevFile.lastModified;
+
+            if (timeDiff > GAP_THRESHOLD_MS) {
+                games.push(currentGame);
+                currentGame = [file];
+            } else {
+                currentGame.push(file);
+            }
+        }
+
+        if (currentGame.length > 0) {
+            games.push(currentGame);
+        }
+        
         return games;
     }
 }

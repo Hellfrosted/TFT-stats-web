@@ -1,3 +1,7 @@
+/**
+ * TFT Augment Stats - OCR Module
+ * Handles Tesseract.js integration for reading stage numbers from screenshots
+ */
 export class OCR {
     constructor() {
         this.worker = null;
@@ -14,7 +18,7 @@ export class OCR {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Stage region: top-center
+        // Stage region: top-center (calibrated for standard TFT UI)
         const w = img.width * 0.15;
         const h = img.height * 0.05;
         const x = img.width * 0.425;
@@ -25,13 +29,18 @@ export class OCR {
         ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
 
         const { data: { text } } = await this.worker.recognize(canvas);
+        
+        // Clean up the object URL to prevent memory leaks
+        URL.revokeObjectURL(img.src);
+        
         return text.trim().match(/\d-\d/)?.[0] || null;
     }
 
     loadImage(file) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(img);
+            img.onerror = reject;
             img.src = URL.createObjectURL(file);
         });
     }
